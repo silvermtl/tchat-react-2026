@@ -1,0 +1,372 @@
+:root{
+  --bg1:#020a15;
+  --bg2:#071a2b;
+
+  --card1:#0b1f35;
+  --card2:#091a2d;
+
+  --neon:#00ffb7;
+  --neon2:#00d7ff;
+
+  --text:#cfe8ff;
+  --muted:rgba(207,232,255,0.78);
+
+  --input1:#0e2a47;
+  --input2:#0c233d;
+}
+
+/* ✅ Fix global */
+*,
+*::before,
+*::after{
+  box-sizing:border-box;
+}
+
+html, body{
+  width:100%;
+  margin:0;
+  padding:0;
+  overflow-x:hidden;
+}
+
+/* ✅ évite scroll horizontal fantôme (quand supporté) */
+html{
+  overflow-x: clip;
+}
+
+/* Page */
+.tchat-page{
+  min-height:100vh;
+  min-height:100svh; /* ✅ stable mobile (barre URL) */
+  min-height:100dvh; /* ✅ chrome mobile */
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  position:relative;
+  overflow-x:hidden; /* ✅ */
+  overflow-y:auto;   /* ✅ */
+
+  /* ✅ safe-area iPhone notch + padding stable */
+  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+
+  background:
+    radial-gradient(1200px 600px at 50% 40%, rgba(0, 255, 183, 0.12), transparent 55%),
+    radial-gradient(900px 500px at 52% 55%, rgba(0, 215, 255, 0.10), transparent 58%),
+    linear-gradient(135deg, var(--bg1), var(--bg2));
+}
+
+/* Glow derrière */
+.tchat-cardGlow{
+  position:absolute;
+  width:min(520px, 90vw);
+  height:min(520px, 90vw);
+  border-radius:50%;
+  filter: blur(58px);
+  opacity:0.55;
+  pointer-events:none;
+
+  /* ✅ rendu plus stable sur Chrome */
+  transform: translateZ(0);
+  will-change: transform;
+
+  /* ✅ limite l'impact du blur sur les repaints */
+  contain: layout paint;
+
+  background:
+    radial-gradient(circle at 45% 35%, rgba(0, 255, 183, 0.55), transparent 55%),
+    radial-gradient(circle at 55% 60%, rgba(0, 215, 255, 0.35), transparent 58%);
+}
+
+/* Carte */
+.tchat-card{
+  width:min(380px, 92vw); /* ✅ un peu plus compact */
+  position:relative;
+  z-index:2;
+
+  padding: clamp(16px, 3.6vw, 30px)
+           clamp(14px, 3.6vw, 26px)
+           clamp(14px, 3.2vw, 22px);
+
+  border-radius: clamp(14px, 3vw, 18px);
+
+  background: linear-gradient(180deg, rgba(11,31,53,0.92), rgba(9,26,45,0.92));
+  border:1px solid rgba(0, 255, 183, 0.22);
+
+  box-shadow:
+    0 0 0 1px rgba(0, 215, 255, 0.10) inset,
+    0 14px 40px rgba(0,0,0,0.45),
+    0 0 45px rgba(0, 255, 183, 0.18);
+}
+
+/* ✅ RÉACTIONS (hors .tchat-card) */
+.reaction-emoji,
+.reaction-count{
+  display:inline-flex;
+  min-width:0;
+  max-width:100%;
+  white-space:normal;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.reactions,
+.reactions-container,
+.message-reactions{
+  display:flex;
+  flex-wrap:wrap;
+  max-width:100%;
+  min-width:0;
+  overflow:hidden;
+  gap:6px;
+}
+
+.reaction-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  max-width:100%;
+  min-width:0;
+  overflow:hidden;
+  flex: 0 1 auto; /* ✅ shrink correct en flex */
+}
+
+/* Titre */
+.tchat-title{
+  margin:0;
+  text-align:center;
+  line-height:1;
+
+  /* ✅ moins gros + plus clean */
+  font-weight:700;
+  font-size: clamp(28px, 6.5vw, 44px);
+  letter-spacing: clamp(1px, 0.5vw, 2px);
+
+  color:transparent;
+  background: linear-gradient(90deg, var(--neon), var(--neon2));
+  -webkit-background-clip:text;
+  background-clip:text;
+
+  text-shadow:
+    0 0 10px rgba(0, 255, 183, 0.35),
+    0 0 22px rgba(0, 215, 255, 0.25);
+
+  word-break: break-word;
+}
+
+/* Sous-titre */
+.tchat-subtitle{
+  margin:12px 0 18px;
+  text-align:center;
+  color:var(--muted);
+  font-size: clamp(12px, 3.4vw, 14px);
+}
+
+/* Form */
+.tchat-form{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.tchat-label{
+  margin-top:8px;
+  color:rgba(207,232,255,0.72);
+  font-size:13px;
+}
+
+/* Inputs */
+.tchat-input{
+  height: 42px; /* ✅ un peu plus compact */
+  border-radius:10px;
+  padding:0 clamp(12px, 3.5vw, 14px);
+
+  font-size:15px; /* ✅ plus compact */
+  color:var(--text);
+
+  background: linear-gradient(180deg, rgba(14,42,71,0.95), rgba(12,35,61,0.95));
+  border:1px solid rgba(0, 215, 255, 0.12);
+
+  outline:none;
+  transition: 140ms ease;
+
+  /* ✅ iOS / mobile polish */
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tchat-input::placeholder{
+  color:rgba(168,197,221,0.55);
+}
+
+.tchat-input:focus{
+  border-color: rgba(0, 255, 183, 0.35);
+  box-shadow:
+    0 0 0 3px rgba(0, 255, 183, 0.12),
+    0 0 18px rgba(0, 215, 255, 0.10);
+}
+
+/* Bouton principal */
+.tchat-btnPrimary{
+  margin-top:14px;
+  height: 44px; /* ✅ */
+  border-radius:10px;
+  border:none;
+  cursor:pointer;
+
+  font-weight:600;
+  letter-spacing:0.8px;
+  font-size:14px;
+
+  color:#062016;
+  background: linear-gradient(90deg, var(--neon), #00ffd0);
+
+  box-shadow:
+    0 10px 24px rgba(0, 255, 183, 0.18),
+    0 0 0 1px rgba(0, 0, 0, 0.15) inset;
+
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.tchat-btnPrimary:hover{
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.tchat-btnPrimary:active{
+  transform: translateY(0px);
+  filter: brightness(0.98);
+}
+
+/* ✅ focus visible accessibilité */
+.tchat-btnPrimary:focus-visible{
+  outline: 2px solid rgba(0, 215, 255, 0.55);
+  outline-offset: 3px;
+}
+
+/* Bouton secondaire */
+.tchat-btnSecondary{
+  height: 44px; /* ✅ */
+  border-radius:10px;
+  cursor:pointer;
+
+  font-weight:600;
+  letter-spacing:0.8px;
+  font-size:14px;
+
+  color:rgba(0, 255, 183, 0.95);
+  background: transparent;
+  border:1px solid rgba(0, 255, 183, 0.50);
+
+  box-shadow:
+    0 0 18px rgba(0, 255, 183, 0.08),
+    0 0 0 1px rgba(0, 215, 255, 0.08) inset;
+
+  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+.tchat-btnSecondary:hover{
+  transform: translateY(-1px);
+  background: rgba(0, 255, 183, 0.06);
+  border-color: rgba(0, 255, 183, 0.65);
+}
+
+.tchat-btnSecondary:active{
+  transform: translateY(0px);
+}
+
+/* ✅ focus visible accessibilité */
+.tchat-btnSecondary:focus-visible{
+  outline: 2px solid rgba(0, 215, 255, 0.55);
+  outline-offset: 3px;
+}
+
+/* ============================= */
+/* ✅ RESPONSIVE MEDIA QUERIES   */
+/* ============================= */
+
+/* Tablette (max 900px) */
+@media (max-width: 900px){
+  .tchat-page{
+    padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+  }
+
+  .tchat-card{
+    width: min(420px, 95vw);
+  }
+
+  .tchat-title{
+    font-size: clamp(26px, 7vw, 40px);
+  }
+
+  .tchat-subtitle{
+    font-size: 13px;
+  }
+}
+
+/* Mobile (max 600px) */
+@media (max-width: 600px){
+  .tchat-page{
+    padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+    align-items: flex-start;
+    padding-top: max(40px, env(safe-area-inset-top));
+  }
+
+  .tchat-card{
+    width: 100%;
+    padding: 20px 16px;
+    border-radius: 14px;
+  }
+
+  .tchat-title{
+    font-size: clamp(24px, 9vw, 36px);
+  }
+
+  .tchat-subtitle{
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+
+  .tchat-input{
+    height: 44px;
+    font-size: 16px; /* ✅ évite zoom iOS */
+  }
+
+  .tchat-btnPrimary,
+  .tchat-btnSecondary{
+    height: 46px;
+    font-size: 15px;
+  }
+}
+
+/* Très petits téléphones (max 360px) */
+@media (max-width: 360px){
+  .tchat-card{
+    padding: 18px 14px;
+  }
+
+  .tchat-title{
+    font-size: 30px;
+  }
+
+  .tchat-form{
+    gap: 8px;
+  }
+}
+
+/* Mode paysage mobile (landscape) */
+@media (max-height: 500px){
+  .tchat-page{
+    align-items: flex-start;
+    padding-top: max(20px, env(safe-area-inset-top));
+  }
+
+  .tchat-card{
+    padding: 16px 16px;
+  }
+
+  .tchat-title{
+    font-size: 32px;
+  }
+}

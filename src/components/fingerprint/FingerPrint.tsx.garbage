@@ -1,0 +1,57 @@
+// src/components/fingerprint/ClientFingerprint.tsx
+import { useEffect } from "react";
+import FingerprintJS from "@fingerprintjs/fingerprintjs";
+import { useChat } from "../../context/ChatContext";
+
+type Props = {
+  storageKey?: string;
+  debug?: boolean;
+};
+
+export default function ClientFingerprint({
+  storageKey = "client_fingerprint",
+  debug = false,
+}: Props) {
+  const { fingerPrint, setFingerPrint } = useChat();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // ⚠️ Si déjà dans le context → rien à faire
+    if (fingerPrint) return;
+
+    (async () => {
+      try {
+        // ✅ localStorage cache
+        const cached = localStorage.getItem(storageKey);
+        if (cached) {
+          if (!cancelled) {
+            setFingerPrint(cached);
+          }
+          return;
+        }
+
+        // ✅ génération fingerprint
+        const fp = await FingerprintJS.load();
+        const result = await fp.get();
+        const id = result.visitorId;
+
+        if (debug) console.log("✅ Fingerprint:", id);
+
+        localStorage.setItem(storageKey, id);
+
+        if (!cancelled) {
+          setFingerPrint(id);
+        }
+      } catch (err) {
+        console.error("Fingerprint error:", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fingerPrint, setFingerPrint, storageKey, debug]);
+
+  return null; // headless
+}

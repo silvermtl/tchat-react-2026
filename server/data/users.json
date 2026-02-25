@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1769530792770,
+    "username": "James007",
+    "email": "dxr@live.fr",
+    "password": "$2b$10$0CTFdoCHBBbY./duStYQ1ue5I/NPpakTbUk.dsvEzMbsiX6NrFir6",
+    "avatarColor": "#00ff88",
+    "role": "admin",
+    "createdAt": "2026-01-27T16:19:52.770Z"
+  },
+  {
+    "id": 1769530928288,
+    "username": "Jacky",
+    "email": "DSSD@FJFD.CA",
+    "password": "$2b$10$3pbEkwBZxBPQoHIbX5pMVOuVBrH0O/CgKP4qxLcIsvFMCLQwjRBJi",
+    "avatarColor": "#00ff88",
+    "createdAt": "2026-01-27T16:22:08.288Z"
+  },
+  {
+    "id": 1769537197360,
+    "username": "dede",
+    "email": "dede@swsw.net",
+    "password": "$2b$10$DJ2XfQPhgCPw7FTFobLB0.eQ/P3G.cjU1PsbDFZsZcB7vdyOLwRby",
+    "avatarColor": "#00ff88",
+    "createdAt": "2026-01-27T18:06:37.360Z"
+  },
+  {
+    "id": 1769537256964,
+    "username": "dede2",
+    "email": "dede@dede.net",
+    "password": "$2b$10$tXYXvDLQDGFx.Bisjx8HdOx/.3gRaluoHGeQrmwhWY9bMIVm9HyYe",
+    "avatarColor": "#00ff88",
+    "createdAt": "2026-01-27T18:07:36.964Z"
+  },
+  {
+    "id": 1769546604479,
+    "username": "kikou",
+    "email": "007@007.ca",
+    "password": "$2b$10$Phes6zwkouQBa60nQeBYN.HQGK2F/2X3QWP5s1Gr4EhpYi5qgyHPu",
+    "avatarColor": "#00ff88",
+    "role": "admin",
+    "createdAt": "2026-01-27T20:43:24.479Z"
+  },
+  {
+    "id": 1769546784320,
+    "username": "moi",
+    "email": "djs@moi.ca",
+    "password": "$2b$10$74QA42on9sVmRq6lba6dkeTTmprjOi/qk.92rfS5eIEjhRtl.UT1i",
+    "avatarColor": "#00ff88",
+    "role": "admin",
+    "createdAt": "2026-01-27T20:46:24.320Z"
+  },
+  {
+    "id": 1769558591557,
+    "username": "Saby69",
+    "email": "diabrina69@gmail.com",
+    "password": "$2b$10$hXgsOiaT/IimfCkS234NYesODg5wyHO44EIt38hNjJGV7OSu0Nq9G",
+    "avatarColor": "#00ff88",
+    "role": "user",
+    "createdAt": "2026-01-28T00:03:11.557Z"
+  }
+]

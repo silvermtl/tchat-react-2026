@@ -1,0 +1,345 @@
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+
+const PORT = process.env.PORT || 3001;
+
+// Créer le serveur HTTP
+const httpServer = createServer((req, res) => {
+  // Endpoint de santé
+  if (req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+    return;
+  }
+  res.writeHead(404);
+  res.end('Not Found');
+});
+
+// Configurer Socket.IO
+const io = new Server(httpServer, {
+  cors: {
+    origin: [
+      'http://148.113.205.209:5173',
+      'http://148.113.205.209:3000',
+      'http://148.113.205.209:5173',
+      // Ajouter vos domaines de production ici
+      /\.netlify\.app$/,
+      /\.same\.new$/,
+    ],
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+  transports: ['websocket', 'polling'],
+});
+
+// ============================================
+// État du serveur
+// ============================================
+const connectedUsers = new Map(); // socketId -> user
+const messages = []; // Historique des messages
+const bannedIPs = new Set(); // IPs bannies
+
+// ============================================
+// Utilitaires
+// ============================================
+function getTimestamp() {
+  return new Date().toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+function broadcastUsersList() {
+  const users = Array.from(connectedUsers.values()).map(u => ({
+    id: u.id,
+    username: u.username,
+    avatar: u.avatar,
+    avatarUrl: u.avatarUrl,
+    color: u.color,
+    role: u.role,
+    status: 'en ligne',
+    ipAddress: u.ipAddress,
+  }));
+  io.emit('users_update', { users });
+}
+
+// ============================================
+// Gestion des connexions Socket.IO
+// ============================================
+io.on('connection', (socket) => {
+  const clientIP = socket.handshake.headers['x-forwarded-for'] ||
+                   socket.handshake.address ||
+                   'unknown';
+
+  console.log(`📡 Nouvelle connexion: ${socket.id} (IP: ${clientIP})`);
+
+  // Vérifier si l'IP est bannie
+  if (bannedIPs.has(clientIP)) {
+    console.log(`🚫 Connexion refusée (IP bannie): ${clientIP}`);
+    socket.emit('error', { message: 'Vous êtes banni de ce chat.' });
+    socket.disconnect(true);
+    return;
+  }
+
+  // --- Rejoindre le chat ---
+  socket.on('join', (userData) => {
+    const user = {
+      id: userData.id || generateId(),
+      username: userData.username,
+      avatar: userData.avatar,
+      avatarUrl: userData.avatarUrl,
+      color: userData.color || '#00d9c0',
+      role: userData.role || 'utilisateur',
+      socketId: socket.id,
+      ipAddress: clientIP,
+      joinedAt: new Date(),
+    };
+
+    connectedUsers.set(socket.id, user);
+    console.log(`✅ ${user.username} a rejoint le chat`);
+
+    // Notifier tous les clients
+    io.emit('user_join', {
+      user: {
+        id: user.id,
+        username: user.username,
+        avatar: user.avatar,
+        avatarUrl: user.avatarUrl,
+        color: user.color,
+        role: user.role,
+        ipAddress: user.ipAddress,
+      },
+      timestamp: getTimestamp(),
+    });
+
+    // Envoyer l'historique des messages au nouvel utilisateur
+    socket.emit('messages_history', { messages: messages.slice(-100) });
+
+    // Mettre à jour la liste des utilisateurs
+    broadcastUsersList();
+  });
+
+  // --- Envoyer un message ---
+  socket.on('send_message', (data) => {
+    console.log(data)
+    const user = connectedUsers.get(socket.id);
+    if (!user) {
+      socket.emit('error', { message: 'Vous devez rejoindre le chat d\'abord.' });
+      return;
+    }
+
+    const message = {
+      id: generateId(),
+      userId: user.id,
+      username: user.username,
+      content: data.content,
+      timestamp: getTimestamp(),
+      avatar: user.avatar,
+      avatarUrl: user.avatarUrl,
+      isAdmin: user.role === 'admin' || user.role === 'administrateur',
+      color: user.color,
+      imageUrl: data.imageUrl,
+      gifUrl: data.gifUrl,
+      audioUrl: data.audioUrl,
+      audioDuration: data.audioDuration,
+    };
+
+    // Sauvegarder le message
+    messages.push(message);
+    if (messages.length > 500) {
+      messages.shift(); // Garder seulement les 500 derniers messages
+    }
+
+    // Diffuser à tous les clients
+    io.emit('message', message);
+    console.log(`💬 ${user.username}: ${data.content?.substring(0, 50) || '[média]'}`);
+  });
+
+  // --- Indicateur de frappe ---
+  socket.on('typing', () => {
+    const user = connectedUsers.get(socket.id);
+    if (user) {
+      socket.broadcast.emit('typing', {
+        userId: user.id,
+        username: user.username,
+      });
+    }
+  });
+
+  socket.on('stop_typing', () => {
+    const user = connectedUsers.get(socket.id);
+    if (user) {
+      socket.broadcast.emit('stop_typing', {
+        userId: user.id,
+        username: user.username,
+      });
+    }
+  });
+
+  // --- Actions admin: Éjecter un utilisateur ---
+  socket.on('kick_user', (data) => {
+    const admin = connectedUsers.get(socket.id);
+    if (!admin || (admin.role !== 'admin' && admin.role !== 'administrateur')) {
+      socket.emit('error', { message: 'Permission refusée.' });
+      return;
+    }
+
+    // Trouver l'utilisateur à éjecter
+    let targetSocket = null;
+    for (const [sockId, user] of connectedUsers.entries()) {
+      if (user.id === data.userId) {
+        targetSocket = sockId;
+        break;
+      }
+    }
+
+    if (targetSocket) {
+      const targetUser = connectedUsers.get(targetSocket);
+      console.log(`⚠️ ${admin.username} a éjecté ${targetUser.username}`);
+
+      // Notifier tout le monde
+      io.emit('user_kicked', {
+        userId: targetUser.id,
+        username: targetUser.username,
+        by: admin.username,
+        reason: data.reason,
+        timestamp: getTimestamp(),
+      });
+
+      // Déconnecter l'utilisateur
+      const targetSocketObj = io.sockets.sockets.get(targetSocket);
+      if (targetSocketObj) {
+        targetSocketObj.emit('kicked', {
+          message: `Vous avez été éjecté par ${admin.username}`,
+          reason: data.reason
+        });
+        targetSocketObj.disconnect(true);
+      }
+
+      connectedUsers.delete(targetSocket);
+      broadcastUsersList();
+    }
+  });
+
+  // --- Actions admin: Bannir un utilisateur ---
+  socket.on('ban_user', (data) => {
+    const admin = connectedUsers.get(socket.id);
+    if (!admin || (admin.role !== 'admin' && admin.role !== 'administrateur')) {
+      socket.emit('error', { message: 'Permission refusée.' });
+      return;
+    }
+
+    // Trouver l'utilisateur à bannir
+    let targetSocket = null;
+    for (const [sockId, user] of connectedUsers.entries()) {
+      if (user.id === data.userId) {
+        targetSocket = sockId;
+        break;
+      }
+    }
+
+    if (targetSocket) {
+      const targetUser = connectedUsers.get(targetSocket);
+      console.log(`🚫 ${admin.username} a banni ${targetUser.username}`);
+
+      // Ajouter l'IP à la liste des bannis
+      if (targetUser.ipAddress) {
+        bannedIPs.add(targetUser.ipAddress);
+      }
+
+      // Notifier tout le monde
+      io.emit('user_banned', {
+        userId: targetUser.id,
+        username: targetUser.username,
+        by: admin.username,
+        reason: data.reason,
+        timestamp: getTimestamp(),
+      });
+
+      // Déconnecter l'utilisateur
+      const targetSocketObj = io.sockets.sockets.get(targetSocket);
+      if (targetSocketObj) {
+        targetSocketObj.emit('banned', {
+          message: `Vous avez été banni par ${admin.username}`,
+          reason: data.reason
+        });
+        targetSocketObj.disconnect(true);
+      }
+
+      connectedUsers.delete(targetSocket);
+      broadcastUsersList();
+    }
+  });
+
+  // --- Effacer les messages (admin) ---
+  socket.on('clear_messages', () => {
+    const admin = connectedUsers.get(socket.id);
+    if (!admin || (admin.role !== 'admin' && admin.role !== 'administrateur')) {
+      socket.emit('error', { message: 'Permission refusée.' });
+      return;
+    }
+
+    messages.length = 0;
+    io.emit('clear_messages');
+    console.log(`🗑️ ${admin.username} a effacé tous les messages`);
+  });
+
+  // --- Déconnexion ---
+  socket.on('disconnect', (reason) => {
+    const user = connectedUsers.get(socket.id);
+    if (user) {
+      console.log(`👋 ${user.username} s'est déconnecté (${reason})`);
+
+      io.emit('user_leave', {
+        userId: user.id,
+        username: user.username,
+        timestamp: getTimestamp(),
+      });
+
+      connectedUsers.delete(socket.id);
+      broadcastUsersList();
+    }
+  });
+
+  // --- Gestion des erreurs ---
+  socket.on('error', (error) => {
+    console.error(`❌ Erreur socket ${socket.id}:`, error);
+  });
+});
+
+// ============================================
+// Démarrer le serveur
+// ============================================
+httpServer.listen(PORT, () => {
+  console.log(`
+╔════════════════════════════════════════════╗
+║     🎙️  RADIOXPLUS Chat Server             ║
+║                                            ║
+║     Port: ${PORT}                            ║
+║     URL:  http://localhost:${PORT}           ║
+║                                            ║
+║     Événements Socket.IO:                  ║
+║     - join         : Rejoindre le chat     ║
+║     - send_message : Envoyer un message    ║
+║     - typing       : Indicateur de frappe  ║
+║     - kick_user    : Éjecter (admin)       ║
+║     - ban_user     : Bannir (admin)        ║
+║     - clear_messages: Effacer (admin)      ║
+╚════════════════════════════════════════════╝
+  `);
+});
+
+// Gestion de l'arrêt propre
+process.on('SIGTERM', () => {
+  console.log('⏹️  Arrêt du serveur...');
+  io.close(() => {
+    httpServer.close(() => {
+      console.log('✅ Serveur arrêté proprement');
+      process.exit(0);
+    });
+  });
+});
